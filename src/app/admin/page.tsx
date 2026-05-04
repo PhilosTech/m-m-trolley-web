@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api/client";
-import type { BookingPolicy, Id, Location, Session, SlotWithBooking } from "@/lib/api/types";
+import type { BookingPolicy, Id, Location, MapLocationDraft, Session, SlotWithBooking } from "@/lib/api/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PhotoUploader } from "@/components/ui/photo-uploader";
@@ -13,6 +13,7 @@ import { buildRowsWithPendingSlots, type PendingSlotDraft } from "@/lib/admin/pe
 import { clearSession, loadSession, saveSession } from "@/lib/session/session";
 import { ScheduleTable } from "@/components/schedule/schedule-table";
 import { Modal } from "@/components/ui/modal";
+import { Lightbox } from "@/components/ui/lightbox";
 
 type ViewState =
   | { status: "auth" }
@@ -30,10 +31,22 @@ export default function AdminPage() {
   const [pendingOp, setPendingOp] = useState<string | null>(null);
   const [flash, setFlash] = useState<FlashState>(null);
 
-  const [activeTab, setActiveTab] = useState<"create" | "result">("create");
+  const [activeTab, setActiveTab] = useState<"create" | "result" | "map">("create");
   const [locations, setLocations] = useState<Location[]>([]);
   const [expandedLocationId, setExpandedLocationId] = useState<Id | null>(null);
   const [bookingPolicy, setBookingPolicy] = useState<BookingPolicy | null>(null);
+  const [mapDraftSrc, setMapDraftSrc] = useState<string | null>(null);
+  const [mapPreviewSrc, setMapPreviewSrc] = useState<string | null>(null);
+  const [mapLocations, setMapLocations] = useState<MapLocationDraft[]>([]);
+  const [mapCreateDraft, setMapCreateDraft] = useState<{
+    positionNumber: string;
+    title: string;
+    photoUrl: string | null;
+  }>({ positionNumber: "", title: "", photoUrl: null });
+  const [mapEditDraftById, setMapEditDraftById] = useState<
+    Record<string, { positionNumber: string; title: string; photoUrl: string | null }>
+  >({});
+  const [mapLocationPreviewSrc, setMapLocationPreviewSrc] = useState<string | null>(null);
 
   const [scheduleByLocationId, setScheduleByLocationId] = useState<
     Record<string, SlotWithBooking[]>
@@ -57,13 +70,15 @@ export default function AdminPage() {
 
   const [deleteBookingId, setDeleteBookingId] = useState<Id | null>(null);
 
+  const maxMapBannerFileBytes = 15 * 1024 * 1024;
+
   useEffect(() => {
     const t = window.setTimeout(() => {
       const s = loadSession();
       if (s?.role === "admin") {
         setSession(s);
         setState({ status: "loading" });
-        void loadInitial();
+        void loadInitial(s);
       }
     }, 0);
     return () => window.clearTimeout(t);
@@ -74,7 +89,7 @@ export default function AdminPage() {
     if (!session) return;
     if (activeTab !== "result") return;
     const t = window.setInterval(() => {
-      void loadInitial();
+      void loadInitial(session);
       for (const loc of locations) void refreshSchedule(loc.id);
     }, 2500);
     return () => window.clearInterval(t);
@@ -96,13 +111,13 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status, session, expandedLocationId, locations]);
 
-  async function loadInitial() {
+  async function loadInitial(currentSession: Session | null) {
     const locRes = await apiClient.listLocations();
     if (!locRes.ok) {
       setState({ status: "error", message: locRes.error.message });
       return;
     }
-    if (session?.role === "admin") {
+    if (currentSession?.role === "admin") {
       const policyRes = await apiClient.getBookingPolicy("admin");
       if (!policyRes.ok) {
         setState({ status: "error", message: policyRes.error.message });
@@ -111,11 +126,155 @@ export default function AdminPage() {
       setBookingPolicy(policyRes.data);
     }
     setLocations(locRes.data);
+    if (currentSession?.role === "admin") {
+      const mapRes = await apiClient.listMapLocations("admin");
+      if (!mapRes.ok) {
+        setState({ status: "error", message: mapRes.error.message });
+        return;
+      }
+      setMapLocations(mapRes.data);
+    }
     setExpandedLocationId((prev) => {
       if (prev && locRes.data.some((l) => l.id === prev)) return prev;
       return locRes.data[0]?.id ?? null;
     });
     setState({ status: "ready" });
+  }
+
+  async function applyMapBanner(nextSrc: string | null) {
+    if (!session || session.role !== "admin") {
+      setState({ status: "error", message: "Admin session required." });
+      return;
+    }
+    setIsBusy(true);
+    setPendingOp("map-apply");
+    try {
+      const next = (nextSrc ?? "").trim();
+      const res = await apiClient.setMapPhoto("admin", { mapPhotoUrl: next.length ? next : null });
+      if (!res.ok) {
+        setFlash({ type: "error", message: res.error.message });
+        return;
+      }
+      setBookingPolicy(res.data);
+      setMapDraftSrc(null);
+      setFlash({ type: "success", message: "Map banner saved." });
+    } finally {
+      setIsBusy(false);
+      setPendingOp(null);
+    }
+  }
+
+  async function deleteMapBanner() {
+    setMapDraftSrc(null);
+    await applyMapBanner(null);
+  }
+
+  async function mapCreateLocation() {
+    if (!session || session.role !== "admin") {
+      setState({ status: "error", message: "Admin session required." });
+      return;
+    }
+    setIsBusy(true);
+    setPendingOp("map-create-location");
+    try {
+      const pos = Number.parseInt(mapCreateDraft.positionNumber, 10);
+      if (!Number.isFinite(pos) || pos <= 0) {
+        setFlash({ type: "error", message: "Enter a valid position number (1+)." });
+        return;
+      }
+      if (mapCreateDraft.title.trim().length === 0) {
+        setFlash({ type: "error", message: "Enter a location name." });
+        return;
+      }
+      const res = await apiClient.createMapLocation("admin", {
+        positionNumber: pos,
+        title: mapCreateDraft.title.trim(),
+        photoUrl: mapCreateDraft.photoUrl,
+      });
+      if (!res.ok) {
+        setFlash({ type: "error", message: res.error.message });
+        return;
+      }
+      await loadInitial(session);
+      setMapCreateDraft({ positionNumber: "", title: "", photoUrl: null });
+      setFlash({ type: "success", message: "Location created. Fill in details and apply." });
+    } finally {
+      setIsBusy(false);
+      setPendingOp(null);
+    }
+  }
+
+  async function mapApplyLocation(id: Id) {
+    if (!session || session.role !== "admin") {
+      setState({ status: "error", message: "Admin session required." });
+      return;
+    }
+    const serverRow = mapLocations.find((x) => x.id === id);
+    if (!serverRow) return;
+    const draft = mapEditDraftById[id] ?? {
+      positionNumber: String(serverRow.positionNumber),
+      title: serverRow.title,
+      photoUrl: serverRow.photoUrl ?? null,
+    };
+    const pos = Number.parseInt(draft.positionNumber, 10);
+    if (!Number.isFinite(pos) || pos <= 0) {
+      setFlash({ type: "error", message: "Enter a valid position number (1+)." });
+      return;
+    }
+    if (draft.title.trim().length === 0) {
+      setFlash({ type: "error", message: "Enter a location name." });
+      return;
+    }
+    setIsBusy(true);
+    setPendingOp(`map-apply-location:${id}`);
+    try {
+      const res = await apiClient.updateMapLocation("admin", {
+        id,
+        positionNumber: pos,
+        title: draft.title.trim(),
+        photoUrl: draft.photoUrl,
+      });
+      if (!res.ok) {
+        setFlash({ type: "error", message: res.error.message });
+        return;
+      }
+      await loadInitial(session);
+      setMapEditDraftById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setFlash({ type: "success", message: "Location saved." });
+    } finally {
+      setIsBusy(false);
+      setPendingOp(null);
+    }
+  }
+
+  async function mapDeleteLocation(id: Id) {
+    if (!session || session.role !== "admin") {
+      setState({ status: "error", message: "Admin session required." });
+      return;
+    }
+    setIsBusy(true);
+    setPendingOp(`map-delete-location:${id}`);
+    try {
+      const res = await apiClient.deleteMapLocation("admin", { id });
+      if (!res.ok) {
+        setFlash({ type: "error", message: res.error.message });
+        return;
+      }
+      await loadInitial(session);
+      setMapEditDraftById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setFlash({ type: "success", message: "Location deleted." });
+    } finally {
+      setIsBusy(false);
+      setPendingOp(null);
+    }
   }
 
   async function setGlobalLock(nextLocked: boolean) {
@@ -181,7 +340,7 @@ export default function AdminPage() {
       }
       saveSession(res.data);
       setSession(res.data);
-      await loadInitial();
+      await loadInitial(res.data);
       setFlash({ type: "success", message: "Signed in as admin." });
     } finally {
       setIsBusy(false);
@@ -228,7 +387,7 @@ export default function AdminPage() {
         setFlash({ type: "error", message: res.error.message });
         return;
       }
-      await loadInitial();
+      await loadInitial(session);
       const newId = res.data.id;
       setExpandedLocationId(newId);
       await refreshSchedule(newId);
@@ -286,7 +445,7 @@ export default function AdminPage() {
         setFlash({ type: "error", message: res.error.message });
         return;
       }
-      await loadInitial();
+      await loadInitial(session);
       await refreshSchedule(locationId);
       setState({ status: "ready" });
       const n = queue.length;
@@ -344,7 +503,7 @@ export default function AdminPage() {
         setFlash({ type: "error", message: res.error.message });
         return;
       }
-      await loadInitial();
+      await loadInitial(session);
       setState({ status: "ready" });
       setPendingSlotsByLocationId((prev) => {
         const next = { ...prev };
@@ -379,7 +538,7 @@ export default function AdminPage() {
         setFlash({ type: "error", message: res.error.message });
         return;
       }
-      await loadInitial();
+      await loadInitial(session);
       setState({ status: "ready" });
       setFlash({
         type: "success",
@@ -411,7 +570,7 @@ export default function AdminPage() {
         setFlash({ type: "error", message: res.error.message });
         return;
       }
-      await loadInitial();
+      await loadInitial(session);
       setState({ status: "ready" });
       setFlash({ type: "success", message: "Photo saved." });
     } finally {
@@ -448,7 +607,7 @@ export default function AdminPage() {
         setFlash({ type: "error", message: res.error.message });
         return;
       }
-      await loadInitial();
+      await loadInitial(session);
       setState({ status: "ready" });
       setFlash({ type: "success", message: "Photo removed." });
     } finally {
@@ -632,6 +791,7 @@ export default function AdminPage() {
                 tabs={[
                   { id: "create", label: "Create" },
                   { id: "result", label: "View result" },
+                    { id: "map", label: "Proposed locations" },
                 ]}
                 activeId={activeTab}
                 onChange={setActiveTab}
@@ -670,6 +830,400 @@ export default function AdminPage() {
               {state.status === "loading" ? (
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
                   Loading…
+                </div>
+              ) : activeTab === "map" ? (
+                <div className="grid gap-4">
+                  <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-4 py-4 sm:px-5">
+                      <div className="min-w-0">
+                        <div className="text-base font-semibold text-zinc-900">Map banner</div>
+                        <div className="mt-1 text-xs text-zinc-600">
+                          Upload one image, click it to view full screen.
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                            <label
+                          className={[
+                                "inline-flex cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500",
+                                "focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 focus-within:ring-offset-white",
+                                isBusy ? "cursor-not-allowed opacity-60 hover:bg-blue-600" : "",
+                          ].join(" ")}
+                        >
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            disabled={isBusy}
+                            aria-label="Upload map banner"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) {
+                                if (e.target) e.target.value = "";
+                                return;
+                              }
+                              if (file.size > maxMapBannerFileBytes) {
+                                const maxMb = Math.round(maxMapBannerFileBytes / (1024 * 1024));
+                                setFlash({
+                                  type: "error",
+                                  message: `File is too large (max ${maxMb} MB). Try a smaller image.`,
+                                });
+                                if (e.target) e.target.value = "";
+                                return;
+                              }
+                              void (async () => {
+                                try {
+                                  const dataUrl = await fileToDataUrl(file);
+                                  setMapDraftSrc(dataUrl);
+                                  await applyMapBanner(dataUrl);
+                                } catch (err: unknown) {
+                                  setFlash({
+                                    type: "error",
+                                    message: err instanceof Error ? err.message : "Failed to read file.",
+                                  });
+                                }
+                              })();
+                              if (e.target) e.target.value = "";
+                            }}
+                          />
+                          Upload
+                        </label>
+                        <Button
+                          type="button"
+                          variant="danger"
+                          onClick={() => void deleteMapBanner()}
+                          disabled={isBusy || !bookingPolicy || !(bookingPolicy.mapPhotoUrl ?? "").length}
+                          isLoading={pendingOp === "map-apply"}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="px-4 py-4 sm:px-5">
+                      {(() => {
+                        const src = (mapDraftSrc ?? bookingPolicy?.mapPhotoUrl ?? "").trim();
+                        if (!src.length) {
+                          return (
+                            <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-sm text-zinc-700">
+                              No map banner yet.
+                            </div>
+                          );
+                        }
+                        return (
+                          <button
+                            type="button"
+                            className="group relative block w-full overflow-hidden rounded-xl border border-zinc-200 bg-white outline-none ring-zinc-900 focus-visible:ring-2"
+                            onClick={() => setMapPreviewSrc(src)}
+                            aria-label="Open map banner full screen"
+                          >
+                            <div className="relative h-80 w-full sm:h-112">
+                              <img
+                                src={src}
+                                alt="Map banner"
+                                className="absolute inset-0 h-full w-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            </div>
+                            <div className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10" />
+                          </button>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
+                      <div className="text-sm font-semibold text-zinc-900">Create map location</div>
+                      <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                        The uploaded map has numbered squares. Find a square on the map, enter its number, add a
+                        location name, attach a photo, then press <span className="font-semibold">Create</span>.
+                      </div>
+                      <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-center">
+                        <div className="w-full md:w-40">
+                          <Input
+                            label="Position number"
+                            value={mapCreateDraft.positionNumber}
+                            disabled={isBusy}
+                            onChange={(e) =>
+                              setMapCreateDraft((p) => ({ ...p, positionNumber: e.target.value }))
+                            }
+                            placeholder="1"
+                          />
+                        </div>
+                        <div className="w-full md:min-w-88 md:flex-1">
+                          <Input
+                            label="Location name"
+                            value={mapCreateDraft.title}
+                            disabled={isBusy}
+                            onChange={(e) => setMapCreateDraft((p) => ({ ...p, title: e.target.value }))}
+                            placeholder="Name"
+                          />
+                        </div>
+                        <div className="w-full md:w-64">
+                          <div className="grid gap-2">
+                            <div className="text-sm font-medium text-zinc-900">Photo</div>
+                            <div className="flex items-center gap-3">
+                              {mapCreateDraft.photoUrl ? (
+                                <button
+                                  type="button"
+                                  className="group relative h-16 w-24 overflow-hidden rounded-xl border border-zinc-200 bg-white outline-none ring-zinc-900 focus-visible:ring-2"
+                                  onClick={() => setMapLocationPreviewSrc(mapCreateDraft.photoUrl)}
+                                  aria-label="Open location photo full screen"
+                                >
+                                  <img
+                                    src={mapCreateDraft.photoUrl}
+                                    alt="Location photo"
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
+                                  />
+                                  <div className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10" />
+                                </button>
+                              ) : (
+                                <div className="h-16 w-24 rounded-xl border border-dashed border-zinc-300 bg-zinc-50" />
+                              )}
+                              <div className="grid gap-2">
+                            <label
+                                  className={[
+                                "inline-flex cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500",
+                                "focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 focus-within:ring-offset-white",
+                                isBusy ? "cursor-not-allowed opacity-60 hover:bg-blue-600" : "",
+                                  ].join(" ")}
+                                >
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="sr-only"
+                                    disabled={isBusy}
+                                    aria-label="Upload location photo"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) {
+                                        if (e.target) e.target.value = "";
+                                        return;
+                                      }
+                                      void (async () => {
+                                        try {
+                                          const dataUrl = await fileToDataUrl(file);
+                                          setMapCreateDraft((p) => ({ ...p, photoUrl: dataUrl }));
+                                        } catch (err: unknown) {
+                                          setFlash({
+                                            type: "error",
+                                            message: err instanceof Error ? err.message : "Failed to read file.",
+                                          });
+                                        }
+                                      })();
+                                      if (e.target) e.target.value = "";
+                                    }}
+                                  />
+                                  Upload
+                                </label>
+                                <Button
+                                  type="button"
+                                  variant="warning"
+                                  onClick={() => setMapCreateDraft((p) => ({ ...p, photoUrl: null }))}
+                                  disabled={isBusy || !mapCreateDraft.photoUrl}
+                                >
+                                  Clear
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="publish"
+                          onClick={() => void mapCreateLocation()}
+                          disabled={isBusy}
+                          isLoading={pendingOp === "map-create-location"}
+                        >
+                          Create
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-6">
+                      <div className="text-sm font-semibold text-zinc-900">Proposed locations list</div>
+                      <div className="mt-1 text-xs text-zinc-600">
+                        You can edit items in this list and press <span className="font-medium">Apply</span>, or{" "}
+                        <span className="font-medium">Delete</span> locations you don’t need.
+                      </div>
+                    </div>
+
+                    {mapLocations.map((row) => {
+                      const draft = mapEditDraftById[row.id] ?? {
+                        positionNumber: String(row.positionNumber),
+                        title: row.title,
+                        photoUrl: row.photoUrl ?? null,
+                      };
+                      const hasChanges =
+                        draft.positionNumber !== String(row.positionNumber) ||
+                        draft.title !== row.title ||
+                        (draft.photoUrl ?? null) !== (row.photoUrl ?? null);
+                      const isOp =
+                        pendingOp === `map-apply-location:${row.id}` ||
+                        pendingOp === `map-delete-location:${row.id}`;
+
+                      return (
+                        <div key={row.id} className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-zinc-900">
+                                #{row.positionNumber} · {row.title.trim().length ? row.title : "Untitled"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-center">
+                            <div className="w-full md:w-40">
+                              <Input
+                                label="Position number"
+                                value={draft.positionNumber}
+                                disabled={isBusy || isOp}
+                                onChange={(e) =>
+                                  setMapEditDraftById((prev) => ({
+                                    ...prev,
+                                    [row.id]: {
+                                      positionNumber: e.target.value,
+                                      title: draft.title,
+                                      photoUrl: draft.photoUrl,
+                                    },
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="w-full md:min-w-88 md:flex-1">
+                              <Input
+                                label="Location name"
+                                value={draft.title}
+                                disabled={isBusy || isOp}
+                                onChange={(e) =>
+                                  setMapEditDraftById((prev) => ({
+                                    ...prev,
+                                    [row.id]: {
+                                      positionNumber: draft.positionNumber,
+                                      title: e.target.value,
+                                      photoUrl: draft.photoUrl,
+                                    },
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="w-full md:w-64">
+                              <div className="grid gap-2">
+                                <div className="text-sm font-medium text-zinc-900">Photo</div>
+                                <div className="flex items-center gap-3">
+                                  {draft.photoUrl ? (
+                                    <button
+                                      type="button"
+                                      className="group relative h-16 w-24 overflow-hidden rounded-xl border border-zinc-200 bg-white outline-none ring-zinc-900 focus-visible:ring-2"
+                                      onClick={() => setMapLocationPreviewSrc(draft.photoUrl)}
+                                      aria-label="Open location photo full screen"
+                                    >
+                                      <img
+                                        src={draft.photoUrl}
+                                        alt="Location photo"
+                                        className="h-full w-full object-cover"
+                                        loading="lazy"
+                                        decoding="async"
+                                      />
+                                      <div className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10" />
+                                    </button>
+                                  ) : (
+                                    <div className="h-16 w-24 rounded-xl border border-dashed border-zinc-300 bg-zinc-50" />
+                                  )}
+
+                                  <div className="grid gap-2">
+                                    <label
+                                      className={[
+                                        "inline-flex cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500",
+                                        "focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 focus-within:ring-offset-white",
+                                        isBusy ? "cursor-not-allowed opacity-60 hover:bg-blue-600" : "",
+                                      ].join(" ")}
+                                    >
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="sr-only"
+                                        disabled={isBusy}
+                                        aria-label="Upload location photo"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (!file) {
+                                            if (e.target) e.target.value = "";
+                                            return;
+                                          }
+                                          void (async () => {
+                                            try {
+                                              const dataUrl = await fileToDataUrl(file);
+                                              setMapEditDraftById((prev) => ({
+                                                ...prev,
+                                                [row.id]: {
+                                                  positionNumber: draft.positionNumber,
+                                                  title: draft.title,
+                                                  photoUrl: dataUrl,
+                                                },
+                                              }));
+                                            } catch (err: unknown) {
+                                              setFlash({
+                                                type: "error",
+                                                message: err instanceof Error ? err.message : "Failed to read file.",
+                                              });
+                                            }
+                                          })();
+                                          if (e.target) e.target.value = "";
+                                        }}
+                                      />
+                                      Upload
+                                    </label>
+                                    <Button
+                                      type="button"
+                                      variant="warning"
+                                      onClick={() =>
+                                        setMapEditDraftById((prev) => ({
+                                          ...prev,
+                                          [row.id]: {
+                                            positionNumber: draft.positionNumber,
+                                            title: draft.title,
+                                            photoUrl: null,
+                                          },
+                                        }))
+                                      }
+                                      disabled={isBusy || !draft.photoUrl}
+                                    >
+                                      Clear
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant={hasChanges ? "unpublish" : "warning"}
+                              onClick={() => void mapApplyLocation(row.id)}
+                              disabled={isBusy || !hasChanges}
+                              isLoading={pendingOp === `map-apply-location:${row.id}`}
+                            >
+                              Apply
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="danger"
+                              onClick={() => void mapDeleteLocation(row.id)}
+                              disabled={isBusy}
+                              isLoading={pendingOp === `map-delete-location:${row.id}`}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (activeTab === "result"
                   ? locations.filter((l) => l.status === "published")
@@ -997,6 +1551,20 @@ export default function AdminPage() {
           </div>
         ) : null}
       </div>
+
+      <Lightbox
+        src={mapPreviewSrc ?? ""}
+        alt="Map banner"
+        isOpen={mapPreviewSrc !== null}
+        onClose={() => setMapPreviewSrc(null)}
+      />
+
+      <Lightbox
+        src={mapLocationPreviewSrc ?? ""}
+        alt="Location photo"
+        isOpen={mapLocationPreviewSrc !== null}
+        onClose={() => setMapLocationPreviewSrc(null)}
+      />
 
       <Modal
         title="Add participant"

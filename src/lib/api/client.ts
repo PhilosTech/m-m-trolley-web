@@ -10,6 +10,7 @@ import type {
   DeleteSlotInput,
   Id,
   Location,
+  MapLocationDraft,
   ReserveInput,
   Role,
   Session,
@@ -112,6 +113,18 @@ export type ApiClient = {
   getPublicBookingPolicy: () => Promise<ApiResult<BookingPolicy>>;
   setGlobalBookingLock: (role: Role, input: SetGlobalBookingLockInput) => Promise<ApiResult<BookingPolicy>>;
   setLocationBookingLock: (role: Role, input: SetLocationBookingLockInput) => Promise<ApiResult<BookingPolicy>>;
+  setMapPhoto: (role: Role, input: { mapPhotoUrl: string | null }) => Promise<ApiResult<BookingPolicy>>;
+
+  listMapLocations: (role: Role) => Promise<ApiResult<MapLocationDraft[]>>;
+  createMapLocation: (
+    role: Role,
+    input: { positionNumber: number; title: string; photoUrl?: string | null },
+  ) => Promise<ApiResult<MapLocationDraft>>;
+  updateMapLocation: (
+    role: Role,
+    input: { id: Id; positionNumber?: number; title?: string; photoUrl?: string | null },
+  ) => Promise<ApiResult<MapLocationDraft>>;
+  deleteMapLocation: (role: Role, input: { id: Id }) => Promise<ApiResult<{ deleted: boolean }>>;
 };
 
 export const apiClient: ApiClient = {
@@ -208,5 +221,46 @@ export const apiClient: ApiClient = {
       `/booking-policy/locations/${encodeURIComponent(input.locationId)}`,
       { method: "PATCH", body: { isLocked: input.isLocked } },
     );
+  },
+  async setMapPhoto(role: Role, input) {
+    if (role !== "admin") return err("Admin access required.");
+    return request<BookingPolicy>("/booking-policy/map-photo", {
+      method: "PATCH",
+      body: { mapPhotoUrl: input.mapPhotoUrl ?? "" },
+    });
+  },
+
+  async listMapLocations(role) {
+    if (role !== "admin") return err("Admin access required.");
+    return request<MapLocationDraft[]>("/map-locations");
+  },
+  async createMapLocation(role, input) {
+    if (role !== "admin") return err("Admin access required.");
+    return request<MapLocationDraft>("/map-locations", {
+      method: "POST",
+      body: {
+        positionNumber: input.positionNumber,
+        title: input.title,
+        photoUrl: input.photoUrl ?? undefined,
+      },
+    });
+  },
+  async updateMapLocation(role, input) {
+    if (role !== "admin") return err("Admin access required.");
+    const { id, ...rest } = input;
+    const body: Record<string, unknown> = {};
+    if (rest.positionNumber !== undefined) body.positionNumber = rest.positionNumber;
+    if (rest.title !== undefined) body.title = rest.title;
+    if (rest.photoUrl !== undefined) body.photoUrl = rest.photoUrl ?? "";
+    return request<MapLocationDraft>(`/map-locations/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body,
+    });
+  },
+  async deleteMapLocation(role, input) {
+    if (role !== "admin") return err("Admin access required.");
+    return request<{ deleted: boolean }>(`/map-locations/${encodeURIComponent(input.id)}`, {
+      method: "DELETE",
+    });
   },
 };

@@ -95,6 +95,14 @@ export type DeleteBookingInput = {
 export type BookingPolicy = {
   isGlobalLocked: boolean;
   lockedLocationIds: Id[];
+  mapPhotoUrl: string | null;
+};
+
+export type MapLocationDraft = {
+  id: Id;
+  positionNumber: number;
+  title: string;
+  photoUrl: string | null;
 };
 
 export type SetGlobalBookingLockInput = {

@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes } from "react";
 import { Spinner } from "@/components/ui/spinner";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "danger" | "publish" | "unpublish";
+  variant?: "primary" | "secondary" | "danger" | "publish" | "unpublish" | "warning";
   isLoading?: boolean;
 };
 
@@ -19,6 +19,8 @@ const VARIANT: Record<NonNullable<Props["variant"]>, string> = {
     "bg-emerald-600 text-white shadow-sm hover:bg-emerald-500 focus:ring-emerald-600 disabled:bg-emerald-300",
   unpublish:
     "bg-blue-600 text-white shadow-sm hover:bg-blue-500 focus:ring-blue-600 disabled:bg-blue-300",
+  warning:
+    "bg-amber-200 text-amber-950 shadow-sm hover:bg-amber-300 focus:ring-amber-300 disabled:bg-zinc-200 disabled:text-zinc-500",
 };
 
 export function Button({
