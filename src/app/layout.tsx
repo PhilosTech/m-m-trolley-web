@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
 import "./globals.css";
@@ -15,7 +15,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Trolley Stand Schedule",
-  description: "Schedule and booking for trolley stands",
+  description:
+    "Half Marathon Trolley Campaign — trolley stand schedule and volunteer shift sign-up",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

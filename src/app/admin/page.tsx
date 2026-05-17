@@ -294,8 +294,8 @@ export default function AdminPage() {
       setFlash({
         type: "success",
         message: nextLocked
-          ? "Adding participants is now closed for everyone."
-          : "Adding participants is open again for everyone.",
+          ? "Volunteer sign-up is now closed for everyone."
+          : "Volunteer sign-up is open again for everyone.",
       });
     } finally {
       setIsBusy(false);
@@ -319,7 +319,9 @@ export default function AdminPage() {
       setBookingPolicy(res.data);
       setFlash({
         type: "success",
-        message: nextLocked ? "Adding is closed for this place." : "Adding is open for this place.",
+        message: nextLocked
+          ? "Volunteer sign-up is closed for this location."
+          : "Volunteer sign-up is open for this location.",
       });
     } finally {
       setIsBusy(false);
@@ -544,7 +546,7 @@ export default function AdminPage() {
         type: "success",
         message:
           nextStatus === "published"
-            ? "Published. Participants can see this place."
+            ? "Published. Volunteers can see this location."
             : "Unpublished. Place is draft again — you can edit it.",
       });
     } finally {
@@ -681,7 +683,7 @@ export default function AdminPage() {
         if (!scheduleByLocationId[loc.id]) continue;
         await refreshSchedule(loc.id);
       }
-      setFlash({ type: "success", message: "Participant added." });
+      setFlash({ type: "success", message: "Volunteer added." });
       closeAddParticipant();
     } finally {
       setIsBusy(false);
@@ -715,7 +717,7 @@ export default function AdminPage() {
         if (!scheduleByLocationId[loc.id]) continue;
         await refreshSchedule(loc.id);
       }
-      setFlash({ type: "success", message: "Participant removed." });
+      setFlash({ type: "success", message: "Volunteer removed." });
       closeDeleteBooking();
     } finally {
       setIsBusy(false);
@@ -724,8 +726,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-full bg-zinc-50 px-4 py-12 text-zinc-950 sm:px-8">
-      <div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-[min(100%,92rem)] flex-col gap-5">
+    <div className="min-h-full overflow-x-clip bg-zinc-50 px-4 py-12 text-zinc-950 sm:px-8">
+      <div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full min-w-0 max-w-[min(100%,92rem)] flex-col gap-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="text-sm text-zinc-600">
@@ -736,7 +738,7 @@ export default function AdminPage() {
             </div>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">Admin</h1>
             <p className="mt-1 text-sm text-zinc-600">
-              Create places and manage time slots.
+              Manage trolley locations, shifts, and volunteer sign-ups.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -804,7 +806,7 @@ export default function AdminPage() {
                   disabled={isBusy}
                   isLoading={pendingOp === "global-lock"}
                 >
-                  {bookingPolicy.isGlobalLocked ? "Open adding" : "Stop adding"}
+                  {bookingPolicy.isGlobalLocked ? "Open sign-up" : "Close sign-up"}
                 </Button>
               ) : null}
               {activeTab === "create" ? (
@@ -1276,7 +1278,7 @@ export default function AdminPage() {
                       >
                         <button
                           type="button"
-                          className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left hover:bg-zinc-50 sm:gap-4 sm:px-5"
+                          className="flex w-full items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-100 px-4 py-4 text-left transition hover:bg-zinc-200/80 sm:gap-4 sm:px-5"
                           onClick={() => void toggleExpanded(loc.id)}
                           aria-label="Toggle place"
                         >
@@ -1321,8 +1323,8 @@ export default function AdminPage() {
                                     isLoading={pendingOp === `location-lock:${loc.id}`}
                                   >
                                     {isLocationLocked
-                                      ? "Open adding for this place"
-                                      : "Stop adding for this place"}
+                                      ? "Open sign-up for this location"
+                                      : "Close sign-up for this location"}
                                   </Button>
                                 ) : (
                                   <div />
@@ -1567,7 +1569,7 @@ export default function AdminPage() {
       />
 
       <Modal
-        title="Add participant"
+        title="Add volunteer"
         isOpen={addParticipantSlotId !== null}
         onClose={() => closeAddParticipant()}
       >
@@ -1608,12 +1610,12 @@ export default function AdminPage() {
       </Modal>
 
       <Modal
-        title="Remove participant?"
+        title="Remove volunteer?"
         isOpen={deleteBookingId !== null}
         onClose={() => closeDeleteBooking()}
       >
         <div className="grid gap-3 text-sm text-zinc-700">
-          <div>This will remove the participant from the time slot.</div>
+          <div>This will remove the volunteer from the shift.</div>
           <div className="mt-2 flex items-center justify-end gap-3">
             <Button
               type="button"

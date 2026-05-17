@@ -57,7 +57,7 @@ export function PhotoGallery({ photoUrls }: Props) {
                 />
               </div>
               <div className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10" />
-              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg bg-black/60 px-2 py-1 text-[11px] font-medium text-white">
+              <div className="pointer-events-none absolute bottom-2 right-2 rounded-lg bg-black/60 px-2 py-1 text-[13px] font-medium text-white">
                 Zoom
               </div>
             </button>

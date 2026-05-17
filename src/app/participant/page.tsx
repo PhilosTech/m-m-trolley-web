@@ -135,7 +135,7 @@ export default function ParticipantPage() {
     const p = latestPolicy ?? bookingPolicy;
     const isLocked = !!p?.isGlobalLocked || !!p?.lockedLocationIds.includes(locationId);
     if (isLocked) {
-      setReserveNotice("Adding participants is closed by the administrator.");
+      setReserveNotice("Volunteer sign-up is closed by the co-ordinator.");
       return;
     }
     setPendingSlotId(timeSlotId);
@@ -149,7 +149,7 @@ export default function ParticipantPage() {
 
   async function reserve() {
     if (!session || session.role !== "participant") {
-      setState({ status: "error", message: "Participant session required." });
+      setState({ status: "error", message: "Volunteer session required." });
       return;
     }
     if (!pendingSlotId) return;
@@ -180,19 +180,19 @@ export default function ParticipantPage() {
   }
 
   return (
-    <div className="min-h-full bg-zinc-50 px-6 py-10 text-zinc-950">
-      <div className="mx-auto w-full max-w-5xl">
+    <div className="min-h-full overflow-x-clip bg-zinc-50 px-4 py-10 text-zinc-950 sm:px-6">
+      <div className="mx-auto w-full min-w-0 max-w-5xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-sm text-zinc-600">
               <Link href="/" className="underline">
                 Home
               </Link>{" "}
-              / Participant
+              / Volunteer
             </div>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Participant</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Volunteer</h1>
             <p className="mt-1 text-sm text-zinc-600">
-              Select a place and reserve a time slot.
+              Choose a trolley location and sign up for a shift.
             </p>
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function ParticipantPage() {
         {state.status === "auth" ? (
           <div className="mt-6 grid gap-4 rounded-2xl border border-zinc-200 bg-white p-6">
             <Input
-              label="Participant access code"
+              label="Volunteer access code"
               value={accessCode}
               onChange={(e) => setAccessCode(e.target.value)}
               placeholder="Enter code"
@@ -228,7 +228,7 @@ export default function ParticipantPage() {
               </div>
             ) : locations.length === 0 ? (
               <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-                No published places yet. Ask an admin to click Publish.
+                No published trolley locations yet. Ask the co-ordinator to publish one.
               </div>
             ) : (
               <div className="grid gap-4">
@@ -242,11 +242,11 @@ export default function ParticipantPage() {
                   return (
                     <div
                       key={loc.id}
-                      className="overflow-hidden rounded-2xl border border-zinc-200 bg-white"
+                      className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white"
                     >
                       <button
                         type="button"
-                        className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left hover:bg-zinc-50 sm:gap-4 sm:px-5"
+                        className="flex w-full items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-100 px-4 py-4 text-left transition hover:bg-zinc-200/80 sm:gap-4 sm:px-5"
                         onClick={() => void toggleExpanded(loc.id)}
                         aria-label="Toggle place"
                       >
@@ -266,7 +266,7 @@ export default function ParticipantPage() {
                       </button>
 
                       {isExpanded ? (
-                        <div className="border-t border-zinc-200 px-5 py-5">
+                        <div className="min-w-0 border-t border-zinc-200 px-4 py-5 sm:px-5">
                           <div className="grid gap-4">
                             <div>
                               <div className="text-lg font-semibold text-zinc-900">
@@ -297,13 +297,13 @@ export default function ParticipantPage() {
                             </div>
 
                             <div className="text-sm text-zinc-700">
-                              Tap <span className="font-semibold">+</span> to add yourself to a
-                              time slot.
+                              Tap <span className="font-semibold">+</span> to sign up for a
+                              shift.
                             </div>
 
                             {isLockedForThisPlace ? (
                               <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
-                                Adding participants is closed by the administrator.
+                                Volunteer sign-up is closed by the co-ordinator.
                               </div>
                             ) : reserveNotice ? (
                               <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
@@ -326,18 +326,19 @@ export default function ParticipantPage() {
                               <div className="font-semibold text-zinc-900">Good to know</div>
                               <div className="mt-2 grid gap-2">
                                 <div>
-                                  There is no hard limit. Usually <span className="font-semibold">2</span>{" "}
-                                  participants is ideal, <span className="font-semibold">3</span>{" "}
-                                  is OK, and <span className="font-semibold">4</span>{" "}
-                                  is also OK if needed (for example, with a child).
+                                  There is no hard limit. We usually need at least{" "}
+                                  <span className="font-semibold">2</span> volunteers per shift;{" "}
+                                  <span className="font-semibold">3</span> is fine, and{" "}
+                                  <span className="font-semibold">4</span> is also OK if needed
+                                  (for example, with a child).
                                 </div>
                                 <div>
                                   If your plans change and you need to{" "}
                                   <span className="font-semibold">remove</span>{" "}
                                   yourself or{" "}
                                   <span className="font-semibold">move</span>{" "}
-                                  to another slot, please contact the responsible person (admin) —
-                                  participants cannot delete bookings themselves.
+                                  to another shift, please contact the co-ordinator —
+                                  volunteers cannot remove their own sign-up.
                                 </div>
                               </div>
                             </div>
@@ -353,7 +354,7 @@ export default function ParticipantPage() {
         ) : null}
       </div>
 
-      <Modal title="Reserve time slot" isOpen={isModalOpen} onClose={() => closeReserveModal()}>
+      <Modal title="Sign up for shift" isOpen={isModalOpen} onClose={() => closeReserveModal()}>
         <div className="grid gap-3">
           <Input
             label="First name"

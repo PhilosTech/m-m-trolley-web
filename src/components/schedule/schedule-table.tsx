@@ -77,17 +77,17 @@ export function ScheduleTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-200">
-      {/* Mobile: stacked list */}
-      <div className="divide-y divide-zinc-200 bg-white sm:hidden">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200">
+      {/* Mobile: stacked list (md+ shows table — keeps phones in landscape on cards) */}
+      <div className="divide-y divide-zinc-200 bg-white md:hidden">
         {rows.map(({ slot, bookedSeats, bookings }) => {
           const free = Math.max(0, slot.capacity - bookedSeats);
           const canReserve = free >= 1;
           const fillClasses = getFillClasses(bookedSeats);
           return (
-            <div key={slot.id} className={`p-4 ${fillClasses}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-zinc-900">
+            <div key={slot.id} className={`min-w-0 p-4 ${fillClasses}`}>
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0 flex flex-wrap items-center gap-2 text-sm font-semibold text-zinc-900">
                   <span>{formatTimeRange(slot.startTimeIso, slot.endTimeIso)}</span>
                   {mode === "admin" && draftSlotIds?.has(slot.id) ? (
                     <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">
@@ -103,7 +103,7 @@ export function ScheduleTable({
                       className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400"
                       disabled={!canReserve || isBusy || isReserveDisabled}
                       onClick={() => onReserve?.(slot.id, 1)}
-                      aria-label="Reserve"
+                      aria-label="Sign up for shift"
                     >
                       +
                     </button>
@@ -113,7 +113,7 @@ export function ScheduleTable({
                       className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400"
                       disabled={isBusy || !onAdminAddParticipant}
                       onClick={() => onAdminAddParticipant?.(slot.id)}
-                      aria-label="Add participant"
+                      aria-label="Add volunteer"
                     >
                       +
                     </button>
@@ -122,25 +122,25 @@ export function ScheduleTable({
               </div>
 
               {showParticipants ? (
-                <div className="mt-3">
+                <div className="mt-3 min-w-0">
                   {bookings.length === 0 ? (
-                    <div className="text-sm text-zinc-500">No participants yet</div>
+                    <div className="text-sm text-zinc-500">No volunteers signed up yet</div>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex min-w-0 flex-wrap gap-2">
                       {bookings.map((b) => (
                         <span
                           key={b.id}
-                          className="max-w-full wrap-break-word inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-800"
+                          className="inline-flex max-w-full min-w-0 items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-sm break-words text-zinc-800"
                         >
-                          {b.participantName}
+                          <span className="min-w-0 break-words">{b.participantName}</span>
                           {mode === "admin" &&
                           adminAction === "participants" &&
                           onAdminDeleteBooking ? (
                             <button
                               type="button"
-                              className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[11px] font-semibold text-white hover:bg-black/80 disabled:opacity-50"
+                              className="ml-2 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black/70 text-[13px] font-semibold text-white hover:bg-black/80 disabled:opacity-50"
                               onClick={() => onAdminDeleteBooking(b.id)}
-                              aria-label="Remove participant"
+                              aria-label="Remove volunteer"
                               disabled={isBusy}
                             >
                               ×
@@ -185,13 +185,13 @@ export function ScheduleTable({
       </div>
 
       {/* Desktop/tablet: table */}
-      <div className="hidden sm:block">
-        <table className="w-full text-left text-sm">
+      <div className="hidden md:block md:overflow-x-auto">
+        <table className="w-full min-w-0 text-left text-sm">
         <thead className="bg-zinc-50 text-zinc-700">
           <tr>
             <th className="px-4 py-3 font-medium">Time</th>
             {showParticipants ? (
-              <th className="px-4 py-3 font-medium">Participants</th>
+              <th className="px-4 py-3 font-medium">Volunteers</th>
             ) : null}
             {showActions ? <th className="px-4 py-3 font-medium">Actions</th> : null}
           </tr>
@@ -219,25 +219,25 @@ export function ScheduleTable({
                   </div>
                 </td>
                 {showParticipants ? (
-                  <td className="px-4 py-3 text-zinc-700">
+                  <td className="max-w-0 px-4 py-3 text-zinc-700">
                     {bookings.length === 0 ? (
-                      <span className="text-zinc-400">No participants yet</span>
+                      <span className="text-zinc-400">No volunteers signed up yet</span>
                     ) : (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex min-w-0 flex-wrap gap-2">
                         {bookings.map((b) => (
                           <span
                             key={b.id}
-                            className="max-w-full wrap-break-word inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-800"
+                            className="inline-flex max-w-full min-w-0 items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-sm break-words text-zinc-800"
                           >
-                            {b.participantName}
+                            <span className="min-w-0 break-words">{b.participantName}</span>
                             {mode === "admin" &&
                             adminAction === "participants" &&
                             onAdminDeleteBooking ? (
                               <button
                                 type="button"
-                                className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[11px] font-semibold text-white hover:bg-black/80 disabled:opacity-50"
+                                className="ml-2 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black/70 text-[13px] font-semibold text-white hover:bg-black/80 disabled:opacity-50"
                                 onClick={() => onAdminDeleteBooking(b.id)}
-                                aria-label="Remove participant"
+                                aria-label="Remove volunteer"
                                 disabled={isBusy}
                               >
                                 ×
@@ -259,7 +259,7 @@ export function ScheduleTable({
                             className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400 sm:h-10 sm:w-10 sm:text-lg"
                             disabled={!canReserve || isBusy || isReserveDisabled}
                             onClick={() => onReserve?.(slot.id, 1)}
-                            aria-label="Reserve"
+                            aria-label="Sign up for shift"
                           >
                             +
                           </button>
@@ -325,7 +325,7 @@ export function ScheduleTable({
                             className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400 sm:h-10 sm:w-10 sm:text-lg"
                             disabled={isBusy || !onAdminAddParticipant}
                             onClick={() => onAdminAddParticipant?.(slot.id)}
-                            aria-label="Add participant"
+                            aria-label="Add volunteer"
                           >
                             +
                           </button>

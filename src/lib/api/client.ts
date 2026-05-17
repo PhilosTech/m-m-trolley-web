@@ -29,8 +29,18 @@ function ok<T>(data: T): ApiResult<T> {
 function err(message: string): ApiResult<never> {
   return {
     ok: false,
-    error: { code: "INTERNAL_ERROR", message },
+    error: { code: "INTERNAL_ERROR", message: humanizeApiMessage(message) },
   };
+}
+
+/** Maps API copy to volunteer-facing UI text without backend changes. */
+function humanizeApiMessage(message: string): string {
+  const map: Record<string, string> = {
+    "Adding participants is closed.": "Volunteer sign-up is closed.",
+    "Adding participants is closed for this place.": "Volunteer sign-up is closed for this location.",
+    "Participant access required.": "Volunteer access required.",
+  };
+  return map[message] ?? message;
 }
 
 async function parseErrorMessage(res: Response): Promise<string> {
@@ -43,8 +53,13 @@ async function parseErrorMessage(res: Response): Promise<string> {
     const j: unknown = JSON.parse(text);
     if (typeof j === "object" && j !== null && "message" in j) {
       const m = (j as { message: unknown }).message;
-      if (typeof m === "string") return m;
-      if (Array.isArray(m)) return m.filter((x) => typeof x === "string").join(", ");
+      if (typeof m === "string") return humanizeApiMessage(m);
+      if (Array.isArray(m)) {
+        return m
+          .filter((x) => typeof x === "string")
+          .map((x) => humanizeApiMessage(x))
+          .join(", ");
+      }
     }
   } catch {
     /* ignore */
@@ -142,7 +157,7 @@ export const apiClient: ApiClient = {
     return request<SlotWithBooking[]>(`/locations/${encodeURIComponent(locationId)}/schedule`);
   },
   async reserve(role, input) {
-    if (role !== "participant") return err("Participant access required.");
+    if (role !== "participant") return err("Volunteer access required.");
     return request<Booking>("/bookings/reserve", { method: "POST", body: input });
   },
   async createLocation(role: Role, input) {

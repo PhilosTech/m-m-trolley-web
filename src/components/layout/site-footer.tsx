@@ -1,7 +1,7 @@
 export function SiteFooter() {
   return (
     <footer
-      className="border-t border-zinc-200 bg-zinc-50 px-3 py-2.5 text-center text-[11px] text-zinc-600 sm:px-6 sm:text-xs"
+      className="border-t border-zinc-200 bg-zinc-50 px-3 py-2.5 text-center text-xs text-zinc-600 sm:px-6"
       role="contentinfo"
     >
       © {new Date().getFullYear()} Trolley Stand Schedule — Developed by{" "}
