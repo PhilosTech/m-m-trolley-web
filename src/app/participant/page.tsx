@@ -111,7 +111,6 @@ export default function ParticipantPage() {
 
   async function login() {
     setIsBusy(true);
-    setState({ status: "loading" });
     const res = await apiClient.login("participant", accessCode);
     if (!res.ok) {
       setState({ status: "error", message: res.error.message });
@@ -120,6 +119,7 @@ export default function ParticipantPage() {
     }
     saveSession(res.data);
     setSession(res.data);
+    setState({ status: "loading" });
     await loadInitial(expandedLocationId);
     setIsBusy(false);
   }
@@ -197,14 +197,20 @@ export default function ParticipantPage() {
           </div>
         </div>
 
-        {state.status === "auth" ? (
+        {state.status === "auth" || state.status === "error" ? (
           <div className="mt-6 grid gap-4 rounded-2xl border border-zinc-200 bg-white p-6">
+            {state.status === "error" ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                {state.message}
+              </div>
+            ) : null}
             <Input
               label="Volunteer access code"
+              type="password"
               value={accessCode}
               onChange={(e) => setAccessCode(e.target.value)}
               placeholder="Enter code"
-              autoComplete="off"
+              autoComplete="current-password"
             />
             <div className="flex items-center gap-3">
               <Button type="button" onClick={() => void login()} disabled={isBusy}>

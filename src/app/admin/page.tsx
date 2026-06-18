@@ -768,10 +768,11 @@ export default function AdminPage() {
           <div className="mt-6 grid gap-4 rounded-2xl border border-zinc-200 bg-white p-6">
             <Input
               label="Admin access code"
+              type="password"
               value={accessCode}
               onChange={(e) => setAccessCode(e.target.value)}
               placeholder="Enter code"
-              autoComplete="off"
+              autoComplete="current-password"
             />
             <div className="flex items-center gap-3">
               <Button
