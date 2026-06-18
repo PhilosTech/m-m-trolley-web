@@ -81,7 +81,7 @@ export function PhotoUploader({
             </button>
             <button
               type="button"
-              className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-xs font-semibold text-white hover:bg-black/80 disabled:opacity-50"
+              className="absolute right-2 top-2 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-sm font-semibold text-white hover:bg-black/80 disabled:opacity-50"
               onClick={(e) => {
                 e.stopPropagation();
                 onRemoveUrl(url);

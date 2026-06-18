@@ -100,7 +100,7 @@ export function ScheduleTable({
                   mode === "participant" && participantAction === "plus" ? (
                     <button
                       type="button"
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400"
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400"
                       disabled={!canReserve || isBusy || isReserveDisabled}
                       onClick={() => onReserve?.(slot.id, 1)}
                       aria-label="Sign up for shift"
@@ -110,7 +110,7 @@ export function ScheduleTable({
                   ) : mode === "admin" && adminAction === "participants" ? (
                     <button
                       type="button"
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400"
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400"
                       disabled={isBusy || !onAdminAddParticipant}
                       onClick={() => onAdminAddParticipant?.(slot.id)}
                       aria-label="Add volunteer"
@@ -256,7 +256,7 @@ export function ScheduleTable({
                         <div className="flex items-center justify-end">
                           <button
                             type="button"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400 sm:h-10 sm:w-10 sm:text-lg"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400"
                             disabled={!canReserve || isBusy || isReserveDisabled}
                             onClick={() => onReserve?.(slot.id, 1)}
                             aria-label="Sign up for shift"
@@ -269,7 +269,7 @@ export function ScheduleTable({
                           <div className="inline-flex items-center rounded-xl border border-zinc-200">
                             <button
                               type="button"
-                              className="h-9 w-9 rounded-l-xl text-sm font-medium text-zinc-900 disabled:text-zinc-300"
+                              className="h-10 w-10 rounded-l-xl text-sm font-medium text-zinc-900 disabled:text-zinc-300"
                               onClick={() =>
                                 setSeatsBySlotId((prev) => ({
                                   ...prev,
@@ -289,7 +289,7 @@ export function ScheduleTable({
                             </div>
                             <button
                               type="button"
-                              className="h-9 w-9 rounded-r-xl text-sm font-medium text-zinc-900 disabled:text-zinc-300"
+                              className="h-10 w-10 rounded-r-xl text-sm font-medium text-zinc-900 disabled:text-zinc-300"
                               onClick={() =>
                                 setSeatsBySlotId((prev) => ({
                                   ...prev,
@@ -322,7 +322,7 @@ export function ScheduleTable({
                         <div className="flex items-center justify-end">
                           <button
                             type="button"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400 sm:h-10 sm:w-10 sm:text-lg"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-base font-semibold text-white disabled:bg-zinc-400"
                             disabled={isBusy || !onAdminAddParticipant}
                             onClick={() => onAdminAddParticipant?.(slot.id)}
                             aria-label="Add volunteer"
