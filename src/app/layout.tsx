@@ -18,12 +18,25 @@ export const metadata: Metadata = {
   title: "Trolley Stand Schedule",
   description:
     "Half Marathon Trolley Campaign — trolley stand schedule and volunteer shift sign-up",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Trolley Stand",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#1a1a1c",
 };
 
 export default function RootLayout({
