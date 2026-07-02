@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { ServerWakeOverlay } from "@/components/ui/server-wake-overlay";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,6 +38,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
+        <ServerWakeOverlay />
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         <SiteFooter />
       </body>
